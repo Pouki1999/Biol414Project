@@ -6,9 +6,7 @@ import pynput.keyboard
 
 """
 class Ant:
-
-    def __init__(self):
-        
+    def __init__(self):        
 """
 
 
@@ -22,7 +20,7 @@ class Environment(Frame):
         self.limits = [1000, 400]
         self.bind("<KeyPress>", self.keydown)
         self.bind("<KeyRelease>", self.keyup)
-        self.curr_pt = (0.0, 0.0)
+        self.curr_pt = (200.0, 100.0)
 
         self.pack()
         self.focus_set()
@@ -30,19 +28,29 @@ class Environment(Frame):
     def initUI(self):
         self.master.title("Random Walk Experiment")
         self.pack(fill=BOTH, expand=1)
-
+        """
         self.canvas.create_line(15, 25, 200, 25)
         self.canvas.create_line(300, 35, 300, 200, dash=(4, 2))
         self.canvas.create_line(55, 85, 155, 85, 105, 180, 55, 85)
-
+        """
         self.canvas.pack(fill=BOTH, expand=1)
 
     def keyup(self, e):
-        print('up, add new point', e.char)
+        pass
 
     def keydown(self, e):
-        print('down', e.char)
-        self.random_walk_next_step(4)
+        if e.char == 'w':
+            self.curr_pt = ()
+        else if e.char == 'd':
+
+        else if e.char == 's':
+
+        else if e.char == 's':
+
+        else if e.char == '':
+
+
+        print(e.char)
 
     def random_walk_next_step(self, step):
         while True:
