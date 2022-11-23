@@ -30,6 +30,7 @@ class Environment(Frame):
         self.canvas.create_line(300, 35, 300, 200, dash=(4, 2))
         self.canvas.create_line(55, 85, 155, 85, 105, 180, 55, 85)
         """
+        self.curr_pos = self.nest_pos
         self.canvas.create_oval(self.nest_pos[0] - 3, self.nest_pos[1] - 3, self.nest_pos[0] + 3, self.nest_pos[1] + 3)
 
         for o in self.obstacles:
