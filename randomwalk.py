@@ -1,4 +1,4 @@
-from tkinter import Tk, BOTH, Frame, Canvas
+from tkinter import Tk, BOTH, Frame, Canvas, Button
 import numpy as np
 import math
 
@@ -11,6 +11,7 @@ class Ant:
 class Environment(Frame):
     def __init__(self):
         super().__init__()
+        self.master.title("Random Walk Experiment")
         self.canvas = Canvas(self)
         self.obstacles = [(100, 300, 400, 500), (450, 50, 550, 500), (700, 100, 950, 450)]
         self.food_sources = [(50, 100), (600, 500), (900, 40)]
@@ -22,8 +23,14 @@ class Environment(Frame):
         self.pack()
         self.focus_set()
 
+        self.bind("<KeyPress>", self.keydown)
+        self.bind("<KeyRelease>", self.keyup)
+
+        startButton = Button(self, text="Start", command=self.initUI)
+        startButton.place(x=0, y=0)
+
     def initUI(self):
-        self.master.title("Random Walk Experiment")
+        self.canvas.delete("all")
         self.pack(fill=BOTH, expand=1)
         """
         self.canvas.create_line(15, 25, 200, 25)
@@ -38,10 +45,14 @@ class Environment(Frame):
         for f in self.food_sources:
             self.canvas.create_oval(f[0] - 3, f[1] - 3, f[0] + 3, f[1] + 3)
 
-
-        self.bind("<KeyPress>", self.keydown)
-        self.bind("<KeyRelease>", self.keyup)
         self.canvas.pack(fill=BOTH, expand=1)
+
+        self.curr_pos = self.nest_pos
+
+    def move(self):
+        self.random_walk_next_step(10)
+
+
 
     def keyup(self, e):
         pass
