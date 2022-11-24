@@ -1,12 +1,23 @@
 from tkinter import Tk, BOTH, Frame, Canvas, Button
 import numpy as np
 import math
+import time
 
-"""
+
 class Ant:
-    def __init__(self):
-        pass
-"""
+    def __init__(self, nest_pos, biased):
+        self.nest_pos = nest_pos
+        self.curr_pos = self.nest_pos
+        self.orientation = 0.0
+        self.pers_std = 3
+        self.pers_range = 10
+        self.noise = 8
+        self.biased = biased
+        self.step_size = 8
+
+    def start_pos(self):
+        self.curr_pos = self.nest_pos
+
 
 class Environment(Frame):
     def __init__(self):
@@ -15,19 +26,27 @@ class Environment(Frame):
         self.canvas = Canvas(self)
         self.obstacles = [(100, 300, 400, 500), (450, 50, 550, 500), (700, 100, 950, 450)]
         self.food_sources = [(50, 100), (600, 500), (900, 40)]
+        self.food_amounts = [5, 5, 7]
+        self.original_food_amounts = [5, 5, 7]
+        self.food_range = 20
+        self.at_std = 3
         self.nest_pos = (300.0, 250.0)
-        self.curr_pos = self.nest_pos
         self.limits = (1000, 600)
+        self.ant = Ant(self.nest_pos, True)
         self.initUI()
-
-        self.pack()
-        self.focus_set()
 
         self.bind("<KeyPress>", self.keydown)
         self.bind("<KeyRelease>", self.keyup)
 
         startButton = Button(self, text="Start", command=self.initUI)
+        """
+        automaticButton = Button(self, text="Automatic", command=self.automatic_walk)
+        automaticButton.place(x=100, y=0)
+        """
         startButton.place(x=0, y=0)
+
+        self.pack()
+        self.focus_set()
 
     def initUI(self):
         self.canvas.delete("all")
@@ -37,7 +56,6 @@ class Environment(Frame):
         self.canvas.create_line(300, 35, 300, 200, dash=(4, 2))
         self.canvas.create_line(55, 85, 155, 85, 105, 180, 55, 85)
         """
-        self.curr_pos = self.nest_pos
         self.canvas.create_oval(self.nest_pos[0] - 6, self.nest_pos[1] - 6, self.nest_pos[0] + 6, self.nest_pos[1] + 6,
                                 fill="#fb0")
 
@@ -49,32 +67,97 @@ class Environment(Frame):
 
         self.canvas.pack(fill=BOTH, expand=1)
 
-        self.curr_pos = self.nest_pos
-
-
+        self.ant.start_pos()
+        for i, f in enumerate(self.original_food_amounts):
+            self.food_amounts[i] = f
 
     def keyup(self, e):
         pass
 
     def keydown(self, e):
-        self.random_walk_next_step(3)
+        if self.ant.biased:
+            self.biased_walk_next_step(self.ant.step_size)
+        else:
+            self.random_walk_next_step(self.ant.step_size)
+    """
+    def automatic_walk(self):
+        for i in range(1000):
+            print(i)
+            self.after(50, self.biased_walk_next_step(self.ant.step_size))
+    """
+    def compute_grad(self):
+        env_x_derivative = 0
+        env_y_derivative = 0
+        x = self.ant.curr_pos[0]
+        y = self.ant.curr_pos[1]
+        for pos, value in zip(self.food_sources, self.food_amounts):
+            if value == 0:
+                continue
+            else:
+                exponent = math.exp(-((x - pos[0])**2 + (y - pos[1]))/(2*value*self.food_range*(self.at_std**2)))
+                env_x_derivative += (-value/((self.at_std**4)*4*math.pi))*exponent*2*(x-pos[0])
+                env_y_derivative += (-value/((self.at_std**4)*4*math.pi))*exponent*2*(y-pos[1])
 
-    def random_walk_next_step(self, step):
+        for o in self.obstacles:
+            pass
+
+        perception = (1/((self.ant.pers_std**2)*2*math.pi))
+
+        return env_x_derivative*perception, env_y_derivative*perception
+
+    def biased_walk_next_step(self, step_size):
+        grad = self.compute_grad()
+        print(grad)
+        if grad != (0.0, 0.0):
+            scale_fact = step_size/math.sqrt(grad[0]*grad[0] + grad[1]*grad[1])
+            scaled_grad = (scale_fact*grad[0], scale_fact*grad[1])
+            c = 0  # iteration counter
+            n = 1  # factor increasing noise
+            while True:
+                c += 1
+                noise_x = np.random.uniform(-self.ant.noise*n, self.ant.noise*n, size=None)
+                noise_y = np.random.uniform(-self.ant.noise*n, self.ant.noise*n, size=None)
+                new_x = self.ant.curr_pos[0] + int(scaled_grad[0] + noise_x + 0.5)
+                new_y = self.ant.curr_pos[1] + int(scaled_grad[1] + noise_y + 0.5)
+                bad = False
+                for o in self.obstacles:
+                    if inRect((new_x, new_y), o) or lineHitsRect((self.ant.curr_pos[0], self.ant.curr_pos[1]), (new_x, new_y), o):
+                        bad = True
+                if bad:
+                    continue
+                if 0 <= new_x <= self.limits[0] and 0 <= new_y <= self.limits[1]:
+                    break
+                if c % 10 == 0:
+                    n += 1 # increase noise if ant get stuck
+            self.canvas.create_line(self.ant.curr_pos[0], self.ant.curr_pos[1], new_x, new_y, dash=(1, 1))
+            self.ant.curr_pos = (new_x, new_y)
+            self.ant.orientation = 0
+            self.update_state_of_food()
+
+    def random_walk_next_step(self, step_size):
         while True:
             angle = np.random.uniform(0.0, 2 * math.pi, size=None)
-            new_x = self.curr_pos[0] + int(step * step * math.cos(angle) + 0.5)
-            new_y = self.curr_pos[1] + int(step * step * math.sin(angle) + 0.5)
+            new_x = self.ant.curr_pos[0] + int(step_size * step_size * math.cos(angle) + 0.5)
+            new_y = self.ant.curr_pos[1] + int(step_size * step_size * math.sin(angle) + 0.5)
             bad = False
             for o in self.obstacles:
-                if inRect((new_x, new_y), o) or lineHitsRect((self.curr_pos[0], self.curr_pos[1]), (new_x, new_y), o):
+                if inRect((new_x, new_y), o) or lineHitsRect((self.ant.curr_pos[0], self.ant.curr_pos[1]), (new_x, new_y), o):
                     bad = True
+                    print('in')
             if bad:
                 continue
             if 0 <= new_x <= self.limits[0] and 0 <= new_y <= self.limits[1]:
                 break
-        self.canvas.create_line(self.curr_pos[0], self.curr_pos[1], new_x, new_y)
-        self.curr_pos = (new_x, new_y)
+        self.canvas.create_line(self.ant.curr_pos[0], self.ant.curr_pos[1], new_x, new_y)
+        self.ant.curr_pos = (new_x, new_y)
 
+    def update_state_of_food(self):
+        for i, f in enumerate(self.food_sources):
+            distance = math.sqrt((self.ant.curr_pos[0] - f[0])*(self.ant.curr_pos[0] - f[0]) +
+                                 (self.ant.curr_pos[1] - f[1])*(self.ant.curr_pos[1] - f[1]))
+            if distance < 5 and self.food_amounts[i] > 0:
+                self.food_amounts[i] -= 1
+        print(self.food_amounts)
 
 def inRect(p, rect):
     """ Return 1 in p is inside rect, dilated by dilation (for edge cases). """
@@ -109,13 +192,13 @@ def lineHitsRect(p1, p2, r):
         return True
     return False
 
+
 def main():
     root = Tk()
     env = Environment()
     limits_string = str(env.limits[0]) + "x" + str(env.limits[1])
     root.geometry(limits_string)
     root.mainloop()
-    print('we are in the main loop')
 
 
 if __name__ == '__main__':
