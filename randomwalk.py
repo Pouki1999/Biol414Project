@@ -34,6 +34,7 @@ class Environment(Frame):
         self.limits = (1000, 600)
         self.ant = Ant(self.nest_pos, True)
         self.initUI()
+        self.time = 0
 
         self.bind("<KeyPress>", self.keydown)
         self.bind("<KeyRelease>", self.keyup)
@@ -70,6 +71,7 @@ class Environment(Frame):
         self.ant.start_pos()
         for i, f in enumerate(self.original_food_amounts):
             self.food_amounts[i] = f
+        self.time = 0
 
     def keyup(self, e):
         pass
@@ -133,6 +135,7 @@ class Environment(Frame):
             self.ant.curr_pos = (new_x, new_y)
             self.ant.orientation = 0
             self.update_state_of_food()
+            self.time += 1
 
     def random_walk_next_step(self, step_size):
         while True:
@@ -158,6 +161,9 @@ class Environment(Frame):
             if distance < 5 and self.food_amounts[i] > 0:
                 self.food_amounts[i] -= 1
         print(self.food_amounts)
+        if self.time % 100 == 0:
+            for i in range(len(self.food_amounts)):
+                self.food_amounts[i] += 1
 
 def inRect(p, rect):
     """ Return 1 in p is inside rect, dilated by dilation (for edge cases). """
