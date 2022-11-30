@@ -13,10 +13,13 @@ class Ant:
         self.pers_range = 20
         self.noise = 0.1
         self.biased = biased
-        self.step_size = 4
+        self.step_size = 8
 
     def start_pos(self):
         self.curr_pos = self.nest_pos
+
+    def path_integration():
+
 
 
 class Environment(Frame):
@@ -161,15 +164,17 @@ class Environment(Frame):
         self.ant.curr_pos = (new_x, new_y)
 
     def update_state_of_food(self):
+        found_food = False
         for i, f in enumerate(self.food_sources):
             distance = math.sqrt((self.ant.curr_pos[0] - f[0])*(self.ant.curr_pos[0] - f[0]) +
                                  (self.ant.curr_pos[1] - f[1])*(self.ant.curr_pos[1] - f[1]))
             if distance < 5 and self.food_amounts[i] > 0:
                 self.food_amounts[i] -= 1
-        print(self.food_amounts)
+                found_food = True
         if self.time % 500 == 0:
             for i in range(len(self.food_amounts)):
                 self.food_amounts[i] += 1
+        return found_food
 
 def inRect(p, rect):
     """ Return 1 in p is inside rect, dilated by dilation (for edge cases). """
