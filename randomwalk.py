@@ -10,10 +10,10 @@ class Ant:
         self.curr_pos = self.nest_pos
         self.orientation = 0.0
         self.pers_std = 3
-        self.pers_range = 10
-        self.noise = 8
+        self.pers_range = 20
+        self.noise = 0.1
         self.biased = biased
-        self.step_size = 8
+        self.step_size = 4
 
     def start_pos(self):
         self.curr_pos = self.nest_pos
@@ -30,11 +30,11 @@ class Environment(Frame):
         self.original_food_amounts = [5, 5, 7]
         self.food_range = 20
         self.at_std = 3
-        self.nest_pos = (300.0, 250.0)
+        self.nest_pos = (300, 250)
         self.limits = (1000, 600)
         self.ant = Ant(self.nest_pos, True)
         self.initUI()
-        self.time = 0
+        self.time = 1
 
         self.bind("<KeyPress>", self.keydown)
         self.bind("<KeyRelease>", self.keyup)
@@ -109,33 +109,38 @@ class Environment(Frame):
 
     def biased_walk_next_step(self, step_size):
         grad = self.compute_grad()
+        print(self.time)
         print(grad)
-        if grad != (0.0, 0.0):
-            scale_fact = step_size/math.sqrt(grad[0]*grad[0] + grad[1]*grad[1])
-            scaled_grad = (scale_fact*grad[0], scale_fact*grad[1])
-            c = 0  # iteration counter
-            n = 1  # factor increasing noise
-            while True:
-                c += 1
-                noise_x = np.random.uniform(-self.ant.noise*n, self.ant.noise*n, size=None)
-                noise_y = np.random.uniform(-self.ant.noise*n, self.ant.noise*n, size=None)
-                new_x = self.ant.curr_pos[0] + int(scaled_grad[0] + noise_x + 0.5)
-                new_y = self.ant.curr_pos[1] + int(scaled_grad[1] + noise_y + 0.5)
-                bad = False
-                for o in self.obstacles:
-                    if inRect((new_x, new_y), o) or lineHitsRect((self.ant.curr_pos[0], self.ant.curr_pos[1]), (new_x, new_y), o):
-                        bad = True
-                if bad:
-                    continue
-                if 0 <= new_x <= self.limits[0] and 0 <= new_y <= self.limits[1]:
-                    break
+        c = 0  # iteration counter
+        n = 1  # factor increasing noise
+        while True:
+            c += 1
+            noise_x = np.random.uniform(-self.ant.noise * n, self.ant.noise * n, size=None)
+            noise_y = np.random.uniform(-self.ant.noise * n, self.ant.noise * n, size=None)
+            print(noise_x, noise_y)
+            comb_vector = (grad[0] + noise_x, grad[1] + noise_y)
+            scale_fact = step_size / math.sqrt(comb_vector[0] * comb_vector[0] + comb_vector[1] * comb_vector[1])
+            scaled_grad = (scale_fact * comb_vector[0], scale_fact * comb_vector[1])
+            new_x = self.ant.curr_pos[0] + int(scaled_grad[0] + noise_x + 0.5)
+            new_y = self.ant.curr_pos[1] + int(scaled_grad[1] + noise_y + 0.5)
+            print(scaled_grad)
+            bad = False
+            for o in self.obstacles:
+                if inRect((new_x, new_y), o) or lineHitsRect(self.ant.curr_pos, (new_x, new_y), o):
+                    bad = True
+            if not (0 <= new_x <= self.limits[0] and 0 <= new_y <= self.limits[1]):
+                bad = True
+            if bad:
                 if c % 10 == 0:
-                    n += 1 # increase noise if ant get stuck
-            self.canvas.create_line(self.ant.curr_pos[0], self.ant.curr_pos[1], new_x, new_y, dash=(1, 1))
-            self.ant.curr_pos = (new_x, new_y)
-            self.ant.orientation = 0
-            self.update_state_of_food()
-            self.time += 1
+                    n += 1  # increase noise if ant get stuck
+            else:
+                break
+
+        self.canvas.create_line(self.ant.curr_pos[0], self.ant.curr_pos[1], new_x, new_y, dash=(1, 1))
+        self.ant.curr_pos = (new_x, new_y)
+        self.ant.orientation = 0
+        self.update_state_of_food()
+        self.time += 1
 
     def random_walk_next_step(self, step_size):
         while True:
@@ -161,7 +166,7 @@ class Environment(Frame):
             if distance < 5 and self.food_amounts[i] > 0:
                 self.food_amounts[i] -= 1
         print(self.food_amounts)
-        if self.time % 100 == 0:
+        if self.time % 500 == 0:
             for i in range(len(self.food_amounts)):
                 self.food_amounts[i] += 1
 
