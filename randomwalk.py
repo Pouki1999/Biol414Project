@@ -57,14 +57,15 @@ class Environment(Frame):
         self.canvas.create_line(300, 35, 300, 200, dash=(4, 2))
         self.canvas.create_line(55, 85, 155, 85, 105, 180, 55, 85)
         """
-        self.canvas.create_oval(self.nest_pos[0] - 6, self.nest_pos[1] - 6, self.nest_pos[0] + 6, self.nest_pos[1] + 6,
+        self.canvas.create_oval(self.nest_pos[0] - 14, self.nest_pos[1] - 14, self.nest_pos[0] + 14, self.nest_pos[1] + 14,
                                 fill="#fb0")
 
         for o in self.obstacles:
             self.canvas.create_rectangle(o[0], o[1], o[2], o[3])
 
-        for f in self.food_sources:
-            self.canvas.create_oval(f[0] - 3, f[1] - 3, f[0] + 3, f[1] + 3)
+        for a, f in zip(self.food_amounts, self.food_sources):
+            self.canvas.create_oval(f[0] - 10, f[1] - 10, f[0] + 10, f[1] + 10)
+            self.canvas.create_text(f[0], f[1], text=str(a), fill="black", font='Helvetica 15 bold')
 
         self.canvas.pack(fill=BOTH, expand=1)
 
