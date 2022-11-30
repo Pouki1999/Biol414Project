@@ -13,13 +13,10 @@ class Ant:
         self.pers_range = 20
         self.noise = 0.1
         self.biased = biased
-        self.step_size = 8
+        self.step_size = 4
 
     def start_pos(self):
         self.curr_pos = self.nest_pos
-
-    def path_integration():
-
 
 
 class Environment(Frame):
@@ -31,6 +28,7 @@ class Environment(Frame):
         self.food_sources = [(50, 100), (600, 500), (900, 40)]
         self.food_amounts = [5, 5, 7]
         self.original_food_amounts = [5, 5, 7]
+        self.food_labels = []
         self.food_range = 20
         self.at_std = 3
         self.nest_pos = (300, 250)
@@ -68,7 +66,7 @@ class Environment(Frame):
 
         for a, f in zip(self.food_amounts, self.food_sources):
             self.canvas.create_oval(f[0] - 10, f[1] - 10, f[0] + 10, f[1] + 10)
-            self.canvas.create_text(f[0], f[1], text=str(a), fill="black", font='Helvetica 15 bold')
+            self.food_labels.append(self.canvas.create_text(f[0], f[1], text=str(a), fill="black", font='Helvetica 15 bold'))
 
         self.canvas.pack(fill=BOTH, expand=1)
 
@@ -164,17 +162,16 @@ class Environment(Frame):
         self.ant.curr_pos = (new_x, new_y)
 
     def update_state_of_food(self):
-        found_food = False
         for i, f in enumerate(self.food_sources):
             distance = math.sqrt((self.ant.curr_pos[0] - f[0])*(self.ant.curr_pos[0] - f[0]) +
                                  (self.ant.curr_pos[1] - f[1])*(self.ant.curr_pos[1] - f[1]))
             if distance < 5 and self.food_amounts[i] > 0:
                 self.food_amounts[i] -= 1
-                found_food = True
+                self.canvas.itemconfig(self.food_labels[i], text=str(self.food_amounts[i]))
+        print(self.food_amounts)
         if self.time % 500 == 0:
             for i in range(len(self.food_amounts)):
                 self.food_amounts[i] += 1
-        return found_food
 
 def inRect(p, rect):
     """ Return 1 in p is inside rect, dilated by dilation (for edge cases). """
