@@ -59,7 +59,7 @@ class Environment(Frame):
         self.canvas.create_line(55, 85, 155, 85, 105, 180, 55, 85)
         """
         self.canvas.create_oval(self.nest_pos[0] - 14, self.nest_pos[1] - 14, self.nest_pos[0] + 14, self.nest_pos[1] + 14,
-                                fill="#fb0")
+                                fill="red2")
 
         for o in self.obstacles:
             self.canvas.create_rectangle(o[0], o[1], o[2], o[3])
