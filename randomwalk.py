@@ -2,6 +2,7 @@ from tkinter import Tk, BOTH, Frame, Canvas, Button
 import numpy as np
 import math
 import time
+from queue import Queue
 
 
 class Ant:
@@ -9,29 +10,58 @@ class Ant:
         self.nest_pos = nest_pos
         self.curr_pos = self.nest_pos
         self.orientation = 0.0
-        self.pers_std = 3
-        self.pers_range = 20
-        self.noise = 0.1
+        self.noise = 5
         self.biased = biased
-        self.step_size = 4
+        self.step_size = 5
+
+        self.carries_food = False
+
+        self.curr_vector = (0.0, 0.0)
+        self.vector_memory = []
 
     def start_pos(self):
         self.curr_pos = self.nest_pos
+        self.carries_food = False
+        self.curr_vector = (0.0, 0.0)
 
+    def change_pos(self, x, y):
+        self.curr_pos = (x, y)
+
+    def update_curr_vector(self):
+        heading = self.orientation
+        dx = self.step_size*math.cos(heading)
+        dy = self.step_size*math.sin(heading)
+        print(dx, dy)
+        self.curr_vector = (self.curr_vector[0] - dx, self.curr_vector[1] - dy)
+        print('curr_vect:', self.curr_vector)
+
+    def update_vector_memory(self):
+        pass
 
 class Environment(Frame):
     def __init__(self):
         super().__init__()
         self.master.title("Random Walk Experiment")
         self.canvas = Canvas(self)
-        self.obstacles = [(100, 300, 400, 500), (450, 50, 550, 500), (700, 100, 950, 450)]
-        self.food_sources = [(50, 100), (600, 500), (900, 40)]
-        self.food_amounts = [5, 5, 7]
-        self.original_food_amounts = [5, 5, 7]
+        self.obstacles = [(100, 300, 200, 390), (100, 410, 200, 500), (300, 300, 400, 500),
+                          (450, 50, 550, 250), (500, 300, 550, 550),
+                          (700, 100, 815, 260), (835, 290, 950, 450)]
+        self.food_sources = [(50, 100), (600, 500), (900, 40), (250, 550), (815, 290), (900, 500), (500, 25)]
+        self.food_amounts = [10, 3, 7, 2, 9, 4, 3]
+        self.landmarks = [(270, 70), (400, 550), (900, 200), (700, 450)]
+        self.landmark_radius = 20
+        self.original_food_amounts = [10, 3, 7, 2, 9, 4, 3]
         self.food_labels = []
+        self.food_scalling = 500
         self.food_range = 20
+        self.food_radius = 10
         self.at_std = 3
         self.nest_pos = (300, 250)
+        self.nest_hunger = -1
+        self.nest_label = None
+        self.nest_scalling = 500
+        self.nest_range = 20
+        self.nest_radius = 14
         self.limits = (1000, 600)
         self.ant = Ant(self.nest_pos, True)
         self.initUI()
@@ -40,7 +70,7 @@ class Environment(Frame):
         self.bind("<KeyPress>", self.keydown)
         self.bind("<KeyRelease>", self.keyup)
 
-        startButton = Button(self, text="Start", command=self.initUI)
+        startButton = Button(self, text="Restart", command=self.initUI)
         """
         automaticButton = Button(self, text="Automatic", command=self.automatic_walk)
         automaticButton.place(x=100, y=0)
@@ -58,92 +88,170 @@ class Environment(Frame):
         self.canvas.create_line(300, 35, 300, 200, dash=(4, 2))
         self.canvas.create_line(55, 85, 155, 85, 105, 180, 55, 85)
         """
-        self.canvas.create_oval(self.nest_pos[0] - 14, self.nest_pos[1] - 14, self.nest_pos[0] + 14, self.nest_pos[1] + 14,
+        self.canvas.create_oval(self.nest_pos[0] - self.nest_radius, self.nest_pos[1] - self.nest_radius,
+                                self.nest_pos[0] + self.nest_radius, self.nest_pos[1] + self.nest_radius,
                                 fill="red2")
 
         for o in self.obstacles:
             self.canvas.create_rectangle(o[0], o[1], o[2], o[3])
 
         for a, f in zip(self.food_amounts, self.food_sources):
-            self.canvas.create_oval(f[0] - 10, f[1] - 10, f[0] + 10, f[1] + 10)
-            self.food_labels.append(self.canvas.create_text(f[0], f[1], text=str(a), fill="black", font='Helvetica 15 bold'))
+            self.canvas.create_oval(f[0] - self.food_radius, f[1] - self.food_radius,
+                                    f[0] + self.food_radius, f[1] + self.food_radius)
+            self.food_labels.append(self.canvas.create_text(f[0], f[1], text=str(a), fill="black",
+                                                            font='Helvetica 15 bold'))
+
+        for l in self.landmarks:
+            self.canvas.create_oval(l[0] - self.landmark_radius, l[1] - self.landmark_radius, l[0] + self.landmark_radius, l[1] + self.landmark_radius)
+
+        self.nest_label = self.canvas.create_text(self.nest_pos[0], self.nest_pos[1], text=str(self.nest_hunger), fill="black", font='Helvetica 15 bold')
 
         self.canvas.pack(fill=BOTH, expand=1)
 
         self.ant.start_pos()
         for i, f in enumerate(self.original_food_amounts):
             self.food_amounts[i] = f
+        self.nest_hunger = -1
         self.time = 0
 
     def keyup(self, e):
         pass
 
     def keydown(self, e):
-        if self.ant.biased:
-            self.biased_walk_next_step(self.ant.step_size)
+        #if self.ant.biased:
+        self.biased_walk_next_step()
+        """
         else:
             self.random_walk_next_step(self.ant.step_size)
-    """
-    def automatic_walk(self):
-        for i in range(1000):
-            print(i)
-            self.after(50, self.biased_walk_next_step(self.ant.step_size))
-    """
-    def compute_grad(self):
-        env_x_derivative = 0
-        env_y_derivative = 0
+        """
+
+    def compute_exploration_grad(self):
+        env_x_derivative = 0.0
+        env_y_derivative = 0.0
         x = self.ant.curr_pos[0]
         y = self.ant.curr_pos[1]
+        # compute attraction from food sources
         for pos, value in zip(self.food_sources, self.food_amounts):
             if value == 0:
                 continue
             else:
-                exponent = math.exp(-((x - pos[0])**2 + (y - pos[1]))/(2*value*self.food_range*(self.at_std**2)))
-                env_x_derivative += (-value/((self.at_std**4)*4*math.pi))*exponent*2*(x-pos[0])
-                env_y_derivative += (-value/((self.at_std**4)*4*math.pi))*exponent*2*(y-pos[1])
+                exponent = math.exp(-((x - pos[0])**2 + (y - pos[1])**2)/(2*value*self.food_range*(self.at_std**2)))
+                env_x_derivative += (-value*self.food_scalling/((self.at_std**4)*4*math.pi))*exponent*2*(x-pos[0])
+                env_y_derivative += (-value*self.food_scalling/((self.at_std**4)*4*math.pi))*exponent*2*(y-pos[1])
+            #print('distance:', math.sqrt((self.ant.curr_pos[0] - pos[0]) ** 2 + (self.ant.curr_pos[1] - pos[1]) ** 2))
+            #print(env_x_derivative, env_y_derivative)
+        # compute repulsion from nest
+        exponent = math.exp(-((x - self.nest_pos[0]) ** 2 + (y - self.nest_pos[1])**2) / (2 * abs(self.nest_hunger) * self.nest_range * (self.at_std ** 2)))
+        env_x_derivative -= (-self.nest_scalling / ((self.at_std ** 4) * 4 * math.pi)) * exponent * 2 * (x - self.nest_pos[0])
+        env_y_derivative -= (-self.nest_scalling / ((self.at_std ** 4) * 4 * math.pi)) * exponent * 2 * (y - self.nest_pos[1])
+        #print('distance:', math.sqrt((self.ant.curr_pos[0] - self.nest_pos[0]) ** 2 + (self.ant.curr_pos[1] - self.nest_pos[1]) ** 2))
 
-        for o in self.obstacles:
-            pass
+        return env_x_derivative, env_y_derivative
 
-        perception = (1/((self.ant.pers_std**2)*2*math.pi))
+    def compute_homing_vector(self):
+        x = self.ant.curr_pos[0]
+        y = self.ant.curr_pos[1]
+        # compute attraction from nest
+        exponent = math.exp(-((x - self.nest_pos[0]) ** 2 + (y - self.nest_pos[1])**2) / (
+                    2 * self.nest_range * (self.at_std ** 2)))
 
-        return env_x_derivative*perception, env_y_derivative*perception
+        env_x_derivative = (self.nest_scalling / ((self.at_std ** 4) * 4 * math.pi)) * exponent * 2 * (x - self.nest_pos[0])
+        env_y_derivative = (self.nest_scalling / ((self.at_std ** 4) * 4 * math.pi)) * exponent * 2 * (y - self.nest_pos[1])
 
-    def biased_walk_next_step(self, step_size):
-        grad = self.compute_grad()
-        print(self.time)
-        print(grad)
+        env_x_derivative += self.ant.curr_vector[0]
+        env_y_derivative += self.ant.curr_vector[1]
+
+        return env_x_derivative, env_y_derivative
+
+    def biased_walk_next_step(self):
+        print('time', self.time)
+        if self.ant.carries_food:
+            print('homing')
+            vector = self.compute_homing_vector()
+        else:
+            print('exploration')
+            vector = self.compute_exploration_grad()
+
+        print(vector)
         c = 0  # iteration counter
-        n = 1  # factor increasing noise
+        n = 1 # noise increase
+        lower_bound = self.ant.orientation - (math.pi / 4)
+        upper_bound = self.ant.orientation + (math.pi / 4)
         while True:
             c += 1
-            noise_x = np.random.uniform(-self.ant.noise * n, self.ant.noise * n, size=None)
-            noise_y = np.random.uniform(-self.ant.noise * n, self.ant.noise * n, size=None)
+            noise_angle = np.random.uniform(lower_bound, upper_bound, size=None)
+            noise_x = n*self.ant.noise*math.cos(noise_angle)
+            noise_y = n*self.ant.noise*math.sin(noise_angle)
             print(noise_x, noise_y)
-            comb_vector = (grad[0] + noise_x, grad[1] + noise_y)
-            scale_fact = step_size / math.sqrt(comb_vector[0] * comb_vector[0] + comb_vector[1] * comb_vector[1])
-            scaled_grad = (scale_fact * comb_vector[0], scale_fact * comb_vector[1])
-            new_x = self.ant.curr_pos[0] + int(scaled_grad[0] + noise_x + 0.5)
-            new_y = self.ant.curr_pos[1] + int(scaled_grad[1] + noise_y + 0.5)
-            print(scaled_grad)
+            comb_vector = (vector[0] + noise_x, vector[1] + noise_y)
+            scale_fact = self.ant.step_size / math.sqrt(comb_vector[0] * comb_vector[0] + comb_vector[1] * comb_vector[1])
+            scaled_vector = (scale_fact * comb_vector[0], scale_fact * comb_vector[1])
+            new_x = self.ant.curr_pos[0] + int(scaled_vector[0] + 0.5)
+            new_y = self.ant.curr_pos[1] + int(scaled_vector[1] + 0.5)
+            #print(scaled_vector)
             bad = False
             for o in self.obstacles:
                 if inRect((new_x, new_y), o) or lineHitsRect(self.ant.curr_pos, (new_x, new_y), o):
                     bad = True
+                    print('in rect')
             if not (0 <= new_x <= self.limits[0] and 0 <= new_y <= self.limits[1]):
                 bad = True
+                print('out of frame')
             if bad:
+                if c == 10:
+                    lower_bound = 0.0
+                    upper_bound = 2*math.pi
                 if c % 10 == 0:
-                    n += 1  # increase noise if ant get stuck
+                    n += 1
             else:
                 break
-
+        print(new_x, new_y)
+        print(scaled_vector)
+        self.ant.orientation = math.atan(scaled_vector[1]/scaled_vector[0])
+        if scaled_vector[0] < 0:
+            if scaled_vector[1] > 0:
+                self.ant.orientation += math.pi
+            else:
+                self.ant.orientation -= math.pi
+        print(self.ant.orientation)
         self.canvas.create_line(self.ant.curr_pos[0], self.ant.curr_pos[1], new_x, new_y, dash=(1, 1))
         self.ant.curr_pos = (new_x, new_y)
-        self.ant.orientation = 0
+        self.ant.update_curr_vector()
         self.update_state_of_food()
         self.time += 1
 
+    def update_state_of_food(self):
+        # For food sources
+        for i, f in enumerate(self.food_sources):
+            distance = math.sqrt((self.ant.curr_pos[0] - f[0])*(self.ant.curr_pos[0] - f[0]) +
+                                 (self.ant.curr_pos[1] - f[1])*(self.ant.curr_pos[1] - f[1]))
+            if distance <= self.food_radius and self.food_amounts[i] > 0 and not self.ant.carries_food:
+                print('Found a food source!')
+                self.food_amounts[i] -= 1
+                self.canvas.itemconfig(self.food_labels[i], text=str(self.food_amounts[i]))
+                self.ant.carries_food = True
+        # For nest
+        distance = math.sqrt((self.ant.curr_pos[0] - self.nest_pos[0]) * (self.ant.curr_pos[0] - self.nest_pos[0]) +
+                             (self.ant.curr_pos[1] - self.nest_pos[1]) * (self.ant.curr_pos[1] - self.nest_pos[1]))
+        if distance <= self.nest_radius and self.ant.carries_food:
+            print('Got to the nest!')
+            self.nest_hunger += 1
+            self.canvas.itemconfig(self.nest_label, text=str(self.nest_hunger))
+            self.ant.carries_food = False
+
+        if self.time % 300 == 0:
+            self.nest_hunger -= 1
+            self.canvas.itemconfig(self.nest_label, text=str(self.nest_hunger))
+
+
+        """
+        ----Increase amount of food at sourcs as time passes----
+        if self.time % 500 == 0:
+            for i in range(len(self.food_amounts)):
+                self.food_amounts[i] += 1
+        """
+
+    """
     def random_walk_next_step(self, step_size):
         while True:
             angle = np.random.uniform(0.0, 2 * math.pi, size=None)
@@ -160,18 +268,8 @@ class Environment(Frame):
                 break
         self.canvas.create_line(self.ant.curr_pos[0], self.ant.curr_pos[1], new_x, new_y)
         self.ant.curr_pos = (new_x, new_y)
+    """
 
-    def update_state_of_food(self):
-        for i, f in enumerate(self.food_sources):
-            distance = math.sqrt((self.ant.curr_pos[0] - f[0])*(self.ant.curr_pos[0] - f[0]) +
-                                 (self.ant.curr_pos[1] - f[1])*(self.ant.curr_pos[1] - f[1]))
-            if distance < 5 and self.food_amounts[i] > 0:
-                self.food_amounts[i] -= 1
-                self.canvas.itemconfig(self.food_labels[i], text=str(self.food_amounts[i]))
-        print(self.food_amounts)
-        if self.time % 500 == 0:
-            for i in range(len(self.food_amounts)):
-                self.food_amounts[i] += 1
 
 def inRect(p, rect):
     """ Return 1 in p is inside rect, dilated by dilation (for edge cases). """
