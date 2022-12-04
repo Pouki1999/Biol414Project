@@ -29,8 +29,8 @@ class Ant:
 
     def update_curr_vector(self):
         heading = self.orientation
-        dx = self.step_size*math.cos(heading)
-        dy = self.step_size*math.sin(heading)
+        dx = int(self.step_size*math.cos(heading) + 0.5)
+        dy = int(self.step_size*math.sin(heading) + 0.5)
         print(dx, dy)
         self.curr_vector = (self.curr_vector[0] - dx, self.curr_vector[1] - dy)
         print('curr_vect:', self.curr_vector)
@@ -182,7 +182,7 @@ class Environment(Frame):
             noise_angle = np.random.uniform(lower_bound, upper_bound, size=None)
             noise_x = n*self.ant.noise*math.cos(noise_angle)
             noise_y = n*self.ant.noise*math.sin(noise_angle)
-            print(noise_x, noise_y)
+            #print(noise_x, noise_y)
             comb_vector = (vector[0] + noise_x, vector[1] + noise_y)
             scale_fact = self.ant.step_size / math.sqrt(comb_vector[0] * comb_vector[0] + comb_vector[1] * comb_vector[1])
             scaled_vector = (scale_fact * comb_vector[0], scale_fact * comb_vector[1])
@@ -205,7 +205,7 @@ class Environment(Frame):
                     n += 1
             else:
                 break
-        print(new_x, new_y)
+        #print(new_x, new_y)
         print(scaled_vector)
         self.ant.orientation = math.atan(scaled_vector[1]/scaled_vector[0])
         if scaled_vector[0] < 0:
@@ -213,7 +213,7 @@ class Environment(Frame):
                 self.ant.orientation += math.pi
             else:
                 self.ant.orientation -= math.pi
-        print(self.ant.orientation)
+        #print(self.ant.orientation)
         self.canvas.create_line(self.ant.curr_pos[0], self.ant.curr_pos[1], new_x, new_y, dash=(1, 1))
         self.ant.curr_pos = (new_x, new_y)
         self.ant.update_curr_vector()
